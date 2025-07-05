@@ -17,7 +17,7 @@ def paginate_users(page_size, offset):
             return [] 
         cursor = connection.cursor(dictionary=True)
         
-        cursor.execute(f"SELECT * FROM {seed.TABLE_NAME} LIMIT {int(page_size)} OFFSET {int(offset)}")
+        cursor.execute(f"SELECT * FROM user_data LIMIT {int(page_size)} OFFSET {int(offset)}")
         rows = cursor.fetchall() 
 
     except mysql.connector.Error as err:
