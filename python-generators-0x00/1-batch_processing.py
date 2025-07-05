@@ -20,7 +20,7 @@ def stream_users_in_batches(batch_size):
             return
 
         cursor = connection.cursor(dictionary=True) 
-        select_query = f"SELECT user_id, name, email, age FROM {seed.TABLE_NAME};"
+        select_query = f"SELECT user_id, name, email, age FROM {seed.user_data};"
         cursor.execute(select_query)
 
         
