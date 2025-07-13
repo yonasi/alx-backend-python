@@ -25,3 +25,12 @@ class ExecuteQuery:
             else:
                 self.connection.rollback()
             self.connection.close()
+
+if __name__ == "__main__":
+    query = "SELECT * FROM users WHERE age > ?"
+    params = (25,)
+    db_path = "my_database.db"
+
+    with ExecuteQuery(db_path, query, params) as results:
+        for row in results:
+            print(row)

@@ -21,3 +21,13 @@ class DatabaseConnection:
             else:
                 self.connection.rollback()
             self.connection.close()
+
+if __name__ == "__main__":
+    db_path = "my_database.db"
+    
+    with DatabaseConnection(db_path) as cursor:
+        cursor.execute("SELECT * FROM users")  
+        rows = cursor.fetchall()
+        for row in rows:
+            print(row)
+
