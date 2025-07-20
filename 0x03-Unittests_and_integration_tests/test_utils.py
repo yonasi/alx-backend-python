@@ -30,6 +30,8 @@ class TestAccessNestedMap(unittest.TestCase):
     ({"a": 1}, ("a", "b")),
 ])
 def test_access_nested_map_exception(self, nested_map, path):
+    '''Test that `access_nested_map` returns the correct value
+       for valid nested dictionary paths.'''
     with self.assertRaises(KeyError) as context:
         access_nested_map(nested_map, path)
     self.assertEqual(str(context.exception),
