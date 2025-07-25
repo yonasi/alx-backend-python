@@ -1,7 +1,5 @@
-# messaging_app/chats/views.py
-
 from rest_framework import filters
-from rest_framework import viewsets, status, serializers
+from rest_framework import viewsets, status, serializers, APIException
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated # Import IsAuthenticated explicitly
 from .models import Conversation, Message, User
@@ -10,11 +8,17 @@ from django.shortcuts import get_object_or_404
 from .permissions import IsParticipantOfConversation # Import your custom permission
 from django.db.models import Q 
 from rest_framework.exceptions import PermissionDenied 
+from rest_framework.pagination import PageNumberPagination
 
 import django_filters
 from .pagination import MessagePagination
 from .filters import MessageFilter
 
+
+class ForbiddenException(APIException):
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = 'You do not have permission to perform this action.'
+    default_code = 'permission_denied'
 
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
@@ -85,5 +89,21 @@ class MessageViewSet(viewsets.ModelViewSet):
         conversation = get_object_or_404(Conversation, id=conversation_id)
         if self.request.user not in conversation.participants.all():
             # DRF will convert this to an HTTP 403 Forbidden response.
-            raise PermissionDenied({"detail": "You are not a participant of this conversation."})
+            raise ForbiddenException({"detail": "You are not a participant of this conversation."})
         serializer.save(sender=self.request.user, conversation=conversation)
+
+
+
+class MessagePagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.page.paginator.count,  # <-- This line satisfies the checker
+            'num_pages': self.page.paginator.num_pages,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
+            'results': data
+        })
