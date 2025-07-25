@@ -9,11 +9,13 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
+from datetime import datetime, timedelta
 from pathlib import Path
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Quick-start development settings - unsuitable for production
@@ -32,6 +34,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'rest_framework',
+    'rest_framework_simplejwt',
     'chats',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -60,6 +63,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -101,15 +105,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',  # Require auth globally
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-    ]
-}
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -134,3 +129,41 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Require auth globally
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ]
+}
+
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5), # How long access tokens are valid
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1), # How long refresh tokens are valid
+    'ROTATE_REFRESH_TOKENS': False, # If true, a new refresh token is issued with every refresh
+    'BLACKLIST_AFTER_ROTATION': True, # If true, old refresh tokens are blacklisted after rotation
+    'UPDATE_LAST_LOGIN': False, # If true, updates user's last_login field on token refresh
+
+    'ALGORITHM': 'HS256', # Algorithm used for signing tokens
+    'SIGNING_KEY': SECRET_KEY, # Use Django's SECRET_KEY for signing
+    'VERIFYING_KEY': None, # Can be used for asymmetric algorithms
+
+    'AUTH_HEADER_TYPES': ('Bearer',), # The header type for JWT (e.g., Authorization: Bearer <token>)
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION', # The name of the header
+
+    'USER_ID_FIELD': 'id', # Field in the user model to use as user ID in the token
+    'USER_ID_CLAIM': 'user_id', # Claim name for the user ID in the token
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+
+    'JTI_CLAIM': 'jti', # JWT ID claim
+
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5), # For sliding tokens (if used)
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1), # For sliding tokens (if used)
+}
+
