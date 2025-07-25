@@ -141,7 +141,8 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication'
     ],
      # Global pagination settings (can be overridden per ViewSet)
-    'DEFAULT_PAGINATION_CLASS': 'chats.pagination.MessagePagination', # Set your custom pagination class as default
+    'DEFAULT_PAGINATION_CLASS': 
+    'rest_framework.pagination.PageNumberPagination', # Set your custom pagination class as default
     'PAGE_SIZE': 20, # Default page size, can be overridden by the pagination class
 
     # Global filter backend settings
