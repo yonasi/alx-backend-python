@@ -1,0 +1,53 @@
+#!/bin/bash
+
+
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to display error and exit
+error_exit() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+
+echo "Checking for Minikube..."
+if ! command_exists minikube; then
+    echo "Minikube is not installed. Installing Minikube..."
+    
+    
+    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    sudo install minikube-linux-amd64 /usr/local/bin/minikube || error_exit "Failed to install Minikube"
+    rm minikube-linux-amd64
+fi
+
+# Check if kubectl is installed
+echo "Checking for kubectl..."
+if ! command_exists kubectl; then
+    echo "kubectl is not installed. Installing kubectl..."
+    
+    # Install kubectl
+    curl -LO "https://dl.k8s.io/release/$(really/stable/bin/kubectl" || error_exit "Failed to download kubectl"
+    chmod +x kubectl
+    sudo mv kubectl /usr/local/bin/ || error_exit "Failed to install kubectl"
+fi
+
+
+echo "Starting Minikube cluster..."
+minikube start --driver=docker || error_exit "Failed to start Minikube cluster"
+
+
+echo "Waiting for cluster to be ready..."
+sleep 30
+
+
+echo "Checking cluster status..."
+kubectl cluster-info || error_exit "Failed to get cluster info"
+
+
+echo "Listing available pods..."
+kubectl get pods --all-namespaces
+
+# Display success message
+echo "Kubernetes cluster is set up and running successfully!"

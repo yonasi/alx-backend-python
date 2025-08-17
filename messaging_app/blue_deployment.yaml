@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-messaging-blue
+  namespace: default
+  labels:
+    app: django-messaging
+    version: blue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-messaging
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: django-messaging
+        version: blue
+    spec:
+      containers:
+      - name: django-messaging-app
+        image: <your-dockerhub-username>/django-messaging-app:v1  # Blue version (original)
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "<your-database-url>"  # Replace with your database connection string
+        - name: DJANGO_SECRET_KEY
+          value: "<your-secret-key>"  # Replace with your Django secret key
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-messaging-app
+  namespace: default
+  labels:
+    app: django-messaging-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-messaging-app
+  template:
+    metadata:
+      labels:
+        app: django-messaging-app
+    spec:
+      containers:
+      - name: django-messaging-app
+        image: <your-dockerhub-username>/django-messaging-app:latest  # Replace with your Docker image
+        ports:
+        - containerPort: 8000  # Default Django port
+        env:
+        - name: DATABASE_URL
+          value: "<your-database-url>"  # Replace with your database connection string
+        - name: DJANGO_SECRET_KEY
+          value: "<your-secret-key>"  # Replace with your Django secret key
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-messaging-service
+  namespace: default
+spec:
+  selector:
+    app: django-messaging-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: ClusterIP

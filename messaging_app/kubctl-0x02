@@ -1,0 +1,62 @@
+#!/bin/bash
+# messaging_app/kubctl-0x02
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to display error and exit
+error_exit() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+# Check if kubectl is installed
+echo "Checking for kubectl..."
+if ! command_exists kubectl; then
+    error_exit "kubectl is not installed. Please install kubectl first."
+fi
+
+# Deploy blue and green versions
+echo "Deploying blue deployment..."
+kubectl apply -f messaging_app/blue_deployment.yaml || error_exit "Failed to deploy blue deployment"
+
+echo "Deploying green deployment..."
+kubectl apply -f messaging_app/green_deployment.yaml || error_exit "Failed to deploy green deployment"
+
+echo "Applying service configuration..."
+kubectl apply -f messaging_app/kubeservice.yaml || error_exit "Failed to apply service"
+
+# Wait for green pods to be ready
+echo "Waiting for green pods to be ready..."
+sleep 30
+
+# Check green deployment pods
+echo "Verifying green deployment pods..."
+GREEN_PODS=$(kubectl get pods -l app=django-messaging,version=green --no-headers | awk '{print $1}')
+if [ -z "$GREEN_PODS" ]; then
+    error_exit "No green pods found"
+fi
+
+# Check logs for errors in green pods
+echo "Checking logs for green deployment..."
+for POD in $GREEN_PODS; do
+    echo "Checking logs for pod $POD..."
+    if kubectl logs "$POD" | grep -i "error"; then
+        error_exit "Errors found in green deployment pod $POD logs"
+    else
+        echo "No errors found in pod $POD"
+    fi
+done
+
+# Switch service to green deployment
+echo "Switching service to green deployment..."
+kubectl patch service django-messaging-service -p '{"spec":{"selector":{"app":"django-messaging","version":"green"}}}' || error_exit "Failed to switch service to green"
+
+# Verify pods
+echo "Listing all pods..."
+kubectl get pods -l app=django-messaging
+
+# Display success message
+echo "Blue-green deployment completed successfully! Traffic switched to green deployment."

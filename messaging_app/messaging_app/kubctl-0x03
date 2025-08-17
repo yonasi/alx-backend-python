@@ -1,0 +1,64 @@
+#!/bin/bash
+# messaging_app/kubctl-0x03
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to display error and exit
+error_exit() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+# Check if kubectl is installed
+echo "Checking for kubectl..."
+if ! command_exists kubectl; then
+    error_exit "kubectl is not installed. Please install kubectl first."
+fi
+
+# Check if curl is installed
+echo "Checking for curl..."
+if ! command_exists curl; then
+    error_exit "curl is not installed. Please install curl first."
+fi
+
+# Apply the updated blue deployment to trigger rolling update
+echo "Applying updated blue deployment..."
+kubectl apply -f messaging_app/blue_deployment.yaml || error_exit "Failed to apply blue deployment"
+
+# Monitor the rolling update progress
+echo "Monitoring rolling update progress..."
+kubectl rollout status deployment/django-messaging-blue || error_exit "Rolling update failed"
+
+# Test for downtime using curl
+echo "Testing for downtime with curl..."
+# Start port-forwarding to the service in the background
+kubectl port-forward svc/django-messaging-service 8000:80 &
+PORT_FORWARD_PID=$!
+# Wait briefly for port-forward to establish
+sleep 5
+
+# Run curl in a loop to check for downtime (10 requests, 1-second interval)
+echo "Sending curl requests to http://localhost:8000..."
+for i in {1..10}; do
+    if curl -s -f http://localhost:8000 >/dev/null; then
+        echo "Request $i: Success"
+    else
+        echo "Request $i: Failed (possible downtime)"
+        kill $PORT_FORWARD_PID
+        error_exit "Downtime detected during rolling update"
+    fi
+    sleep 1
+done
+
+# Stop port-forwarding
+kill $PORT_FORWARD_PID
+
+# Verify the rolling update by checking pods
+echo "Verifying rolling update completion..."
+kubectl get pods -l app=django-messaging,version=blue -o wide
+
+# Display success message
+echo "Rolling update completed successfully with no downtime!"

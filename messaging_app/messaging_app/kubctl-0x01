@@ -1,0 +1,68 @@
+#!/bin/bash
+# messaging_app/kubctl-0x01
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to display error and exit
+error_exit() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+# Check if kubectl is installed
+echo "Checking for kubectl..."
+if ! command_exists kubectl; then
+    error_exit "kubectl is not installed. Please install kubectl first."
+fi
+
+# Check if wrk is installed
+echo "Checking for wrk..."
+if ! command_exists wrk; then
+    echo "wrk is not installed. Installing wrk..."
+    # Install wrk (for Ubuntu/Debian - adjust for other OS if needed)
+    sudo apt-get update && sudo apt-get install -y wrk || error_exit "Failed to install wrk"
+fi
+
+
+echo "Checking for metrics-server..."
+if ! kubectl top pod >/dev/null 2>&1; then
+    echo "Metrics Server is not installed. Installing metrics-server..."
+    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml || error_exit "Failed to install metrics-server"
+    # Wait for metrics-server to be ready
+    echo "Waiting for metrics-server to be ready..."
+    sleep 30
+fi
+
+
+echo "Scaling Django app deployment to 3 replicas..."
+kubectl scale deployment django-messaging-app --replicas=3 || error_exit "Failed to scale deployment"
+
+
+echo "Waiting for pods to be ready..."
+sleep 30
+
+
+echo "Listing running pods..."
+kubectl get pods -l app=django-messaging-app || error_exit "Failed to list pods"
+
+
+echo "Performing load test with wrk..."
+
+kubectl port-forward svc/django-messaging-service 8000:80 &
+PORT_FORWARD_PID=$!
+
+sleep 5
+
+wrk -t10 -c100 -d10s http://localhost:8000 || error_exit "wrk load test failed"
+
+kill $PORT_FORWARD_PID
+
+
+echo "Monitoring resource usage with kubectl top..."
+kubectl top pod -l app=django-messaging-app || error_exit "Failed to get resource usage"
+
+
+echo "Scaling, load testing, and resource monitoring completed successfully!"
