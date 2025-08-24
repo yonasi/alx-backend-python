@@ -17,8 +17,8 @@ pipeline {
                 sh '''
                     python -m venv venv
                     . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r messaging_app/requirements.txt
+                    pip3 install --upgrade pip
+                    pip3 install -r messaging_app/requirements.txt
                 '''
             }
         }
@@ -43,6 +43,80 @@ pipeline {
     post {
         always {
             // Clean up workspace after the build
+            cleanWs()
+        }
+    }
+}
+
+pipeline {
+    agent {
+        docker {
+            image 'docker:20.10' // Use a Docker image with Docker CLI
+            args '-u root --privileged -v /var/run/docker.sock:/var/run/docker.sock' // Mount Docker socket
+        }
+    }
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') // Reference Docker Hub credentials
+        IMAGE_NAME = "yourusername/messaging-app" // Replace with your Docker Hub repo
+        IMAGE_TAG = "${env.BUILD_NUMBER}" // Use Jenkins build number as tag
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                // Pull code from GitHub
+                git branch: 'main', credentialsId: 'github-credentials', url: 'https://github.com/<your-username>/alx-backend-python.git'
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    apk add --no-cache python3 py3-pip
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r messaging_app/requirements.txt
+                '''
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    cd messaging_app
+                    pytest --junitxml=test-results.xml
+                '''
+            }
+        }
+        stage('Archive Test Report') {
+            steps {
+                archiveArtifacts artifacts: 'messaging_app/test-results.xml', allowEmptyArchive: true
+                junit 'messaging_app/test-results.xml'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    cd messaging_app
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                '''
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                sh '''
+                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            // Clean up workspace and Docker images
+            sh '''
+                docker logout
+                docker image rm ${IMAGE_NAME}:${IMAGE_TAG} || true
+            '''
             cleanWs()
         }
     }
